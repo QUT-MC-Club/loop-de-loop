@@ -1,5 +1,6 @@
 package io.github.restioson.loopdeloop.game;
 
+import net.minecraft.scoreboard.number.FixedNumberFormat;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
@@ -20,15 +21,20 @@ public class LoopDeLoopSideBar {
 
     public void render(List<LoopDeLoopPlayer> leaderboard) {
         this.sidebar.set(content -> {
-            var top = Text.literal("Total hoops: ")
-                    .formatted(Formatting.AQUA, Formatting.BOLD)
-                    .append(Text.literal(String.valueOf(this.totalHoops)).formatted(Formatting.WHITE));
-            content.add(top);
+            var top = Text.literal("Total hoops: ").formatted(Formatting.AQUA, Formatting.BOLD);
+
+            var topNumber = Text.literal(String.valueOf(this.totalHoops)).formatted(Formatting.WHITE, Formatting.BOLD);
+            var topFormat = new FixedNumberFormat(topNumber);
+
+            content.add(top, topFormat);
 
             for (LoopDeLoopPlayer entry : leaderboard) {
-                var line = entry.player.getName().copy().append(": ").formatted(Formatting.AQUA)
-                        .append(Text.literal(String.valueOf(entry.lastHoop + 1)).formatted(Formatting.WHITE));
-                content.add(line);
+                var line = entry.player.getName().copy().formatted(Formatting.AQUA);
+
+                var number = Text.literal(String.valueOf(entry.lastHoop + 1)).formatted(Formatting.WHITE);
+                var format = new FixedNumberFormat(number);
+
+                content.add(line, format);
             }
         });
     }

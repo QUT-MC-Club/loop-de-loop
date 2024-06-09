@@ -376,7 +376,7 @@ public final class LoopDeLoopActive {
     }
 
     private void onPlayerFinish(ServerPlayerEntity player, LoopDeLoopPlayer state, long time) {
-        this.finished.add(new LoopDeLoopWinner(player.getEntityName(), time));
+        this.finished.add(new LoopDeLoopWinner(player.getNameForScoreboard(), time));
         this.lastCompleter = player;
         boolean isFirst = false;
 
