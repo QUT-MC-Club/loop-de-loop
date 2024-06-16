@@ -1,7 +1,9 @@
 {
   "type": "loopdeloop:loopdeloop",
   "icon": "minecraft:feather",
-  "description": "game.loopdeloop.flappy.desc",
+  "description": {
+    "translate": "game.loopdeloop.flappy.desc"
+  },
   "loops": 80,
   "time_limit_secs": 240,
   "start_rockets": 30,

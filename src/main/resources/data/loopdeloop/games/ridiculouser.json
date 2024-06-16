@@ -1,7 +1,9 @@
 {
   "type": "loopdeloop:loopdeloop",
   "icon": "minecraft:elytra",
-  "description": "''I am so sorry.'' - Siuol",
+  "description": {
+    "translate": "game.loopdeloop.ridiculouser.desc"
+  },
   "loops": 150,
   "time_limit_secs": 360,
   "start_rockets": 25,
