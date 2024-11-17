@@ -1,6 +1,7 @@
 package io.github.restioson.loopdeloop.game;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.entity.player.PlayerPosition;
 import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
@@ -9,7 +10,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import xyz.nucleoid.plasmid.game.player.PlayerIterable;
+import xyz.nucleoid.plasmid.api.game.player.PlayerIterable;
 
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +34,7 @@ public final class StartingCountdown {
         if (sec_f > 1) {
             for (ServerPlayerEntity player : players) {
                 var frozenPosition = this.frozenPositions.computeIfAbsent(player.getUuid(), uuid -> player.getPos());
-                player.networkHandler.requestTeleport(frozenPosition.x, frozenPosition.y, frozenPosition.z, player.getYaw(), player.getPitch(), TELEPORT_FLAGS);
+                player.networkHandler.requestTeleport(new PlayerPosition(new Vec3d(frozenPosition.x, frozenPosition.y, frozenPosition.z), Vec3d.ZERO, 0, 0), TELEPORT_FLAGS);
             }
         }
 

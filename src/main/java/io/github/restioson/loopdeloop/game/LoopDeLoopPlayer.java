@@ -4,7 +4,9 @@ import io.github.restioson.loopdeloop.LoopDeLoop;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
-import xyz.nucleoid.plasmid.game.stats.StatisticMap;
+import xyz.nucleoid.plasmid.api.game.stats.StatisticMap;
+
+import java.util.Set;
 
 public class LoopDeLoopPlayer {
     public final ServerPlayerEntity player;
@@ -26,7 +28,7 @@ public class LoopDeLoopPlayer {
 
     public void teleport(double x, double y, double z) {
         ServerWorld world = this.player.getServerWorld();
-        this.player.teleport(world, x, y, z, 0.0F, 0.0F);
+        this.player.teleport(world, x, y, z, Set.of(), 0.0F, 0.0F, false);
         this.lastPos = new Vec3d(x, y, z);
     }
 

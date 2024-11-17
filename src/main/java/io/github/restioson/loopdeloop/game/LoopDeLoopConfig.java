@@ -1,6 +1,7 @@
 package io.github.restioson.loopdeloop.game;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.restioson.loopdeloop.LoopDeLoop;
 import net.minecraft.block.Block;
@@ -8,10 +9,10 @@ import net.minecraft.block.Blocks;
 import net.minecraft.registry.RegistryCodecs;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntryList;
-import xyz.nucleoid.plasmid.game.common.config.PlayerConfig;
+import xyz.nucleoid.plasmid.api.game.common.config.WaitingLobbyConfig;
 
 public record LoopDeLoopConfig(
-        PlayerConfig players,
+        WaitingLobbyConfig players,
         int timeLimit,
         int loops,
         int loopRadius,
@@ -26,8 +27,8 @@ public record LoopDeLoopConfig(
         boolean infiniteMode,
         boolean debugMode
 ) {
-    public static final Codec<LoopDeLoopConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            PlayerConfig.CODEC.fieldOf("players").orElse(new PlayerConfig(1, 100)).forGetter(LoopDeLoopConfig::players),
+    public static final MapCodec<LoopDeLoopConfig> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            WaitingLobbyConfig.CODEC.fieldOf("players").orElse(new WaitingLobbyConfig(1, 100)).forGetter(LoopDeLoopConfig::players),
             Codec.INT.fieldOf("time_limit_secs").forGetter(LoopDeLoopConfig::timeLimit),
             Codec.INT.fieldOf("loops").forGetter(LoopDeLoopConfig::loops),
             Codec.INT.fieldOf("loop_radius").orElse(5).forGetter(LoopDeLoopConfig::loopRadius),

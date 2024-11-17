@@ -8,18 +8,18 @@ import io.github.restioson.loopdeloop.game.map.LoopDeLoopWinner;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.Blocks;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FireworkExplosionComponent;
+import net.minecraft.component.type.FireworksComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.projectile.FireworkRocketEntity;
-import net.minecraft.item.FireworkRocketItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtInt;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -32,28 +32,28 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.world.GameMode;
 import org.jetbrains.annotations.Nullable;
-import xyz.nucleoid.plasmid.game.GameCloseReason;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
-import xyz.nucleoid.plasmid.game.common.team.GameTeam;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamConfig;
-import xyz.nucleoid.plasmid.game.common.team.GameTeamKey;
-import xyz.nucleoid.plasmid.game.common.team.TeamManager;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
-import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.rule.GameRuleType;
-import xyz.nucleoid.plasmid.game.stats.StatisticKey;
-import xyz.nucleoid.plasmid.game.stats.StatisticKeys;
-import xyz.nucleoid.plasmid.util.ItemStackBuilder;
+import xyz.nucleoid.plasmid.api.game.GameCloseReason;
+import xyz.nucleoid.plasmid.api.game.GameSpace;
+import xyz.nucleoid.plasmid.api.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamConfig;
+import xyz.nucleoid.plasmid.api.game.common.team.GameTeamKey;
+import xyz.nucleoid.plasmid.api.game.common.team.TeamManager;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
+import xyz.nucleoid.plasmid.api.game.rule.GameRuleType;
+import xyz.nucleoid.plasmid.api.game.stats.StatisticKeys;
+import xyz.nucleoid.plasmid.api.util.ItemStackBuilder;
+import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemUseEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
@@ -142,7 +142,8 @@ public final class LoopDeLoopActive {
 
             activity.listen(GameActivityEvents.ENABLE, active::onOpen);
 
-            activity.listen(GamePlayerEvents.OFFER, active::offerPlayer);
+            activity.listen(GamePlayerEvents.OFFER, JoinOffer::acceptSpectators);
+            activity.listen(GamePlayerEvents.ACCEPT, active::acceptPlayer);
             activity.listen(GamePlayerEvents.REMOVE, active::removePlayer);
 
             activity.listen(GameActivityEvents.TICK, active::tick);
@@ -154,34 +155,35 @@ public final class LoopDeLoopActive {
         });
     }
 
-    private TypedActionResult<ItemStack> onUseItem(ServerPlayerEntity player, Hand hand) {
+    private ActionResult onUseItem(ServerPlayerEntity player, Hand hand) {
         ItemStack heldStack = player.getStackInHand(hand);
 
         LoopDeLoopPlayer state = this.playerStates.get(player);
         if (state != null) {
             if (heldStack.getItem() == Items.FEATHER) {
                 ItemCooldownManager cooldown = player.getItemCooldownManager();
-                if (!cooldown.isCoolingDown(heldStack.getItem())) {
+                if (!cooldown.isCoolingDown(heldStack)) {
                     Vec3d rotationVec = player.getRotationVec(1.0F);
                     player.setVelocity(rotationVec.multiply(LEAP_VELOCITY));
                     Vec3d oldVel = player.getVelocity();
                     player.setVelocity(oldVel.x, oldVel.y + 0.5f, oldVel.z);
                     player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
 
-                    player.playSound(SoundEvents.ENTITY_HORSE_SADDLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
-                    cooldown.set(heldStack.getItem(), LEAP_INTERVAL_TICKS);
+                    player.playSoundToPlayer(SoundEvents.ENTITY_HORSE_SADDLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
+                    cooldown.set(heldStack, LEAP_INTERVAL_TICKS);
 
                     state.boostUsed++;
+                    return ActionResult.SUCCESS_SERVER;
                 }
             } else if (heldStack.getItem() == Items.FIREWORK_ROCKET) {
                 ItemCooldownManager cooldown = player.getItemCooldownManager();
-                if (!cooldown.isCoolingDown(heldStack.getItem())) {
+                if (!cooldown.isCoolingDown(heldStack)) {
                     state.boostUsed++;
                 }
             }
         }
 
-        return TypedActionResult.pass(ItemStack.EMPTY);
+        return ActionResult.PASS;
     }
 
     private void onOpen() {
@@ -218,7 +220,7 @@ public final class LoopDeLoopActive {
         this.sidebar.render(this.buildLeaderboard());
     }
 
-    private PlayerOfferResult offerPlayer(PlayerOffer offer) {
+    private JoinAcceptorResult acceptPlayer(JoinAcceptor offer) {
         return this.spawnLogic.acceptPlayer(offer, GameMode.SPECTATOR);
     }
 
@@ -292,7 +294,7 @@ public final class LoopDeLoopActive {
 
     private boolean tickPlayer(ServerPlayerEntity player, LoopDeLoopPlayer state, long time) {
         if (time < this.fallFlyingTime) {
-            player.startFallFlying();
+            player.startGliding();
         }
 
         int nextHoopIdx = state.lastHoop + 1;
@@ -314,7 +316,7 @@ public final class LoopDeLoopActive {
         state.lastPos = currentPos;
 
         if (nextHoop.intersectsSegment(lastPos, currentPos)) {
-            player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
+            player.playSoundToPlayer(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
 
             if (!this.config.flappyMode()) {
                 giveRocket(player, 1, this.config.rocketPower());
@@ -387,7 +389,7 @@ public final class LoopDeLoopActive {
                 .append(" place!");
 
         player.sendMessage(message, true);
-        player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
+        player.playSoundToPlayer(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
         player.changeGameMode(GameMode.SPECTATOR);
         if (this.finished.size() == 1 && (long) playerStates.entrySet().size() > 1) isFirst = true;
         this.publishPlayerStatistics(player, state, time, isFirst);
@@ -442,7 +444,7 @@ public final class LoopDeLoopActive {
             );
         }
 
-        player.playSound(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0F, 1.0F);
+        player.playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1.0F, 1.0F);
     }
 
     private void broadcastWin() {
@@ -471,16 +473,16 @@ public final class LoopDeLoopActive {
         this.broadcastSound(SoundEvents.ENTITY_VILLAGER_YES);
     }
 
-    private ActionResult onPlayerDamage(ServerPlayerEntity player, DamageSource source, float amount) {
+    private EventResult onPlayerDamage(ServerPlayerEntity player, DamageSource source, float amount) {
         long time = this.world.getTime();
         this.failHoop(player, this.playerStates.get(player), time);
-        return ActionResult.FAIL;
+        return EventResult.DENY;
     }
 
-    private ActionResult onPlayerDeath(ServerPlayerEntity player, DamageSource source) {
+    private EventResult onPlayerDeath(ServerPlayerEntity player, DamageSource source) {
         long time = this.world.getTime();
         this.failHoop(player, this.playerStates.get(player), time);
-        return ActionResult.FAIL;
+        return EventResult.DENY;
     }
 
     private void spawnParticipant(ServerPlayerEntity player) {
@@ -504,9 +506,7 @@ public final class LoopDeLoopActive {
 
     private static void giveRocket(ServerPlayerEntity player, int n, int flightPower) {
         ItemStack rockets = new ItemStack(Items.FIREWORK_ROCKET, n);
-        NbtCompound rocketPowered = new NbtCompound();
-        rocketPowered.putInt("Flight", flightPower);
-        rockets.getOrCreateNbt().put("Fireworks", rocketPowered);
+        rockets.set(DataComponentTypes.FIREWORKS, new FireworksComponent(flightPower, List.of()));
         player.getInventory().insertStack(rockets);
     }
 
@@ -515,7 +515,7 @@ public final class LoopDeLoopActive {
             if (player.equals(this.lastCompleter)) {
                 continue;
             }
-            player.playSound(sound, SoundCategory.PLAYERS, 1.0F, pitch);
+            player.playSoundToPlayer(sound, SoundCategory.PLAYERS, 1.0F, pitch);
         }
     }
 

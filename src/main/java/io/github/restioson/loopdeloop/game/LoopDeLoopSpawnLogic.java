@@ -9,10 +9,14 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.world.GameMode;
-import xyz.nucleoid.plasmid.game.GameOpenException;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
+import xyz.nucleoid.plasmid.api.game.GameOpenException;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+
+import java.util.Set;
+
 
 public final class LoopDeLoopSpawnLogic {
     private final ServerWorld world;
@@ -23,11 +27,9 @@ public final class LoopDeLoopSpawnLogic {
         this.map = map;
     }
 
-    public PlayerOfferResult acceptPlayer(PlayerOffer offer, GameMode gameMode) {
-        var player = offer.player();
-        var spawn = this.generateSpawn(player);
-        return offer.accept(this.world, spawn)
-                .and(() -> this.resetPlayer(player, gameMode));
+    public JoinAcceptorResult acceptPlayer(JoinAcceptor offer, GameMode gameMode) {
+        return offer.teleport(this.world, this.generateSpawn(this.world.getRandom()))
+                .thenRunForEach(player -> this.resetPlayer(player, gameMode));
     }
 
     public void resetPlayer(ServerPlayerEntity player, GameMode gameMode) {
@@ -43,20 +45,20 @@ public final class LoopDeLoopSpawnLogic {
     }
 
     public void spawnPlayer(ServerPlayerEntity player) {
-        var spawn = this.generateSpawn(player);
+        var spawn = this.generateSpawn(player.getRandom());
 
-        player.teleport(this.world, spawn.x, spawn.y, spawn.z, 0.0F, 0.0F);
+        player.teleport(this.world, spawn.x, spawn.y, spawn.z, Set.of(), 0.0F, 0.0F, false);
     }
 
-    private Vec3d generateSpawn(ServerPlayerEntity player) {
+    private Vec3d generateSpawn(Random random) {
         BlockPos spawn = this.map.getSpawn();
         if (spawn == null) {
             throw new GameOpenException(Text.literal("Cannot spawn player! No spawn defined in map!"));
         }
 
         float radius = 2.5f;
-        double x = spawn.getX() + MathHelper.nextDouble(player.getRandom(), -radius, radius);
-        double z = spawn.getZ() + 1 + MathHelper.nextDouble(player.getRandom(), -radius, radius);
+        double x = spawn.getX() + MathHelper.nextDouble(random, -radius, radius);
+        double z = spawn.getZ() + 1 + MathHelper.nextDouble(random, -radius, radius);
         return new Vec3d(x, spawn.getY(), z);
     }
 }
